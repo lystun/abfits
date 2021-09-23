@@ -3,6 +3,7 @@ const app = express();
 
 app.use(express.json());
 
+
 //error handler
 const HandleError = require('./utils/handleError')
 
@@ -13,11 +14,14 @@ const globalErrorHandler = require('./utils/globalErrorHandler');
 const categoryRoutes = require('./routes/categoriesRoutes');
 const stylesRoutes = require('./routes/stylesRoutes');
 const userRoutes = require('./routes/userRoutes');
+const authRoutes = require('./routes/authRoutes');
+
 
 //mount routes
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/styles', stylesRoutes);
 app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/auth', authRoutes);
 
 app.all('*', (req, res, next) => {
     return next(new HandleError("Route not found", 404));

@@ -10,9 +10,13 @@
   "author": "Lystun",
   "license": "ISC",
   "dependencies": {
+    "bcrypt": "^5.0.1",
+    "dotenv": "^10.0.0",
     "express": "^4.17.1",
     "mongoose": "^6.0.5",
     "morgan": "^1.10.0",
+    "nodemailer": "^6.6.3",
+    "uuid": "^8.3.2",
     "validator": "^13.6.0"
   }
 }
