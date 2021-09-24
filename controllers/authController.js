@@ -2,10 +2,10 @@ const nodemailer = require('nodemailer');
 const User  = require('./../models/userModel');
 const validator = require('validator');
 const HandlerError = require('../utils/handleError');
-
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const { v4: uuidv4 } = require('uuid');
+const jwt = require('jsonwebtoken');
 
 var transport = nodemailer.createTransport({
     host: "smtp.mailtrap.io",
@@ -15,6 +15,57 @@ var transport = nodemailer.createTransport({
       pass: "d9936580c8b620"
     }
 });
+
+const jwtSign = (id) => {
+    const token = jwt.sign(
+        {id}, 
+        process.env.JWT_SIGN, 
+        { expiresIn: process.env.JWT_EXPIRES } 
+    );
+
+    return token;
+}
+
+const tokenCookieRes = (user, statusCode, res)=>{
+    //sign the token
+    const token = jwtSign(user._id);
+    
+    const expiration = new Date( Date.now() + process.env.COOKIE_EXPIRES * 24 * 60 * 60 * 1000 );
+    const cookieOptions = {
+        expires: expiration,
+        httpOnly: true,
+    }
+
+    if( process.env.NODE_ENV === 'production' ) cookieOptions.secure = true
+
+    //define the expiration time of the cookie;
+    res.cookie("jwt", token, cookieOptions);
+
+    // return response
+    res.status(statusCode).json({
+        status: "success",
+        token,
+        data: {
+            user
+        }
+    })
+}
+
+//just for testing
+exports.testHandler = async (req, res, next) => {
+    try {
+        
+        console.log(req.user);
+
+
+    } catch (error) {
+        res.status(404)
+            .json({
+                status: "fail",
+                message: error.message 
+            });
+    } 
+}
 
 //register user
 exports.createUser = async (req, res, next) => {
@@ -84,11 +135,8 @@ exports.createUser = async (req, res, next) => {
         //create user
         const newUser = await User.create(user);
         
-        res.status(200)
-            .json({
-                status: "success",
-                data: newUser
-            });
+        //return the response
+        tokenCookieRes(newUser, 201, res);
 
     } catch (error) {
         res.status(404)
@@ -112,18 +160,15 @@ exports.loginUser = async (req, res, next) => {
         if(!user) return next(new HandlerError("Incorrect email and/or password", 400));
 
         //check if the password is correct with that in the database
-        const status = await bcrypt.compare(password, user.password);
-        if(!status) return next(new HandlerError("Incorrect email and/or password", 400));
+        const correctPassword = await bcrypt.compare(password, user.password);
+        if(!correctPassword) return next(new HandlerError("Incorrect email and/or password", 400));
+
+        //check if the user is active
+        if(user.active) return next(new HandlerError("Please verify your email address.", 400));
 
         //log the user in
+        tokenCookieRes(user, 200, res);
         
-       
-        res.status(200)
-            .json({
-                status: "success",
-                data: user
-            });
-
     } catch (error) {
         res.status(404)
             .json({
@@ -157,6 +202,44 @@ exports.verifyEmail = async (req, res, next) => {
                 status: "success",
                 data: user
             });
+
+    } catch (error) {
+        res.status(404)
+            .json({
+                status: "fail",
+                message: error.message 
+            });
+    } 
+}
+
+//autheticate user
+exports.authenticateUser = async (req, res, next) => {
+    try {
+
+        if(req.headers.authorization && req.headers.authorization.startsWith('Bearer')){
+            //get the token from the request
+            const token = req.headers.authorization.split(" ")[1];
+
+            if(!token){
+                return next(new AppError("You're not logged in. Please log in.", 401));
+            };
+
+            //decode the encrypted jwt token
+            const decoded = await jwt.verify(token, process.env.JWT_SIGN);
+
+            //check if the token has not expired
+            
+            
+            //check if the user still exists in database
+            const user = await User.findById(decoded.id);
+
+            if(!user) return next(new HandlerError( "User no longer exists on the platform", 404));
+
+            //carry along the information unto the next handler
+            req.user = user;
+
+            next();
+        }
 
     } catch (error) {
         res.status(404)
