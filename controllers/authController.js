@@ -215,13 +215,12 @@ exports.verifyEmail = async (req, res, next) => {
 //autheticate user
 exports.authenticateUser = async (req, res, next) => {
     try {
-
         if(req.headers.authorization && req.headers.authorization.startsWith('Bearer')){
             //get the token from the request
             const token = req.headers.authorization.split(" ")[1];
 
             if(!token){
-                return next(new AppError("You're not logged in. Please log in.", 401));
+                return next(new HandlerError("You're not logged in. Please log in.", 401));
             };
 
             //decode the encrypted jwt token
@@ -239,6 +238,8 @@ exports.authenticateUser = async (req, res, next) => {
             req.user = user;
 
             next();
+        }else {
+            return next(new HandlerError("Send in a valid authorization.", 400))
         }
 
     } catch (error) {

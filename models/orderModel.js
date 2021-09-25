@@ -5,22 +5,29 @@ const orderSchema = mongoose.Schema({
         type: mongoose.Schema.ObjectId,
         ref: 'User'
     },
-    orderDetails: {
+    style: {
         type: String
+    },
+    measurements: {
+        type: Object
     },
     status: {
         type: String,
-        enum: ["pending", "delivered","returned"]
+        enum: ["pending", "delivered","returned"],
+        default: "pending"
     },
-    amount: String,
-    paymentId: String,
-    dueDelivery: String,
+    paymentId: {
+        type: mongoose.Schema.ObjectId,
+        ref: 'Payment'
+    },
+    dueDelivery: Date,
     deliveryDate: Date,
     deliveryLocation: String,
 },
 {
     timestamps: true
 });
+
 
 const Order = mongoose.model('Order', orderSchema);
 module.exports = Order

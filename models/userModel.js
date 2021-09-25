@@ -37,7 +37,7 @@ const userSchema = mongoose.Schema({
             message: "Passwords do not match"
         }
     },
-
+    measurements: Object,
     verificationToken: String,
     verificationTokenExpires: Date,
 
