@@ -52,6 +52,9 @@ const userSchema = mongoose.Schema({
 
 //document middleware
 userSchema.pre('save', async function(next){
+
+    if(!this.isModified('password')) return next();
+    
     // encrypt the password
     this.password = await bcrypt.hash(this.password, 10);
     this.confirmPassword = undefined;

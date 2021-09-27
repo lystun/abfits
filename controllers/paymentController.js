@@ -78,7 +78,6 @@ exports.createPayment = async (req, res, next) => {
     } 
 }
 
-
 exports.updatePayment = async (req, res, next) => {
     try {
         
@@ -98,9 +97,30 @@ exports.updatePayment = async (req, res, next) => {
     } 
 }
 
-
 exports.deletePayment = async (req, res, next) => {
     try {
+        
+
+        res.status(200).json({
+            status:"success",
+            data: []
+        })
+
+
+    } catch (error) {
+        res.status(404)
+            .json({
+                status: "fail",
+                message: error.message 
+            });
+    } 
+}
+
+//handle payment using flutterwave
+exports.makePayment = async (req, res, next) => {
+    try {
+
+        
         
 
         res.status(200).json({

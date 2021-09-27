@@ -164,7 +164,7 @@ exports.loginUser = async (req, res, next) => {
         if(!correctPassword) return next(new HandlerError("Incorrect email and/or password", 400));
 
         //check if the user is active
-        if(user.active) return next(new HandlerError("Please verify your email address.", 400));
+        if(!user.active) return next(new HandlerError("Please verify your email address.", 400));
 
         //log the user in
         tokenCookieRes(user, 200, res);

@@ -3,24 +3,103 @@ const Payment = require("../models/paymentModel");
 const User = require("../models/userModel");
 const HandlerError = require("../utils/handleError");
 const { v4: uuidv4 } = require('uuid');
+const axios = require('axios');
 
-const handlePayment = (amount, email) =>{
+// This is the encryption function that encrypts your payload by passing the stringified format and your encryption Key.
+function encrypt(key, text){
+    var forge = require("node-forge");
+    var cipher = forge.cipher.createCipher(
+        "3DES-ECB",
+        forge.util.createBuffer(key)
+    );
 
-    const types = ["card", "transfer", "cash"];
-    const getRandom = (num) => {
-        return Math.floor(Math.random() * num );
-    }
+    cipher.start({ iv: "" });
+    cipher.update(forge.util.createBuffer(text, "utf-8"));
+    cipher.finish();
+    var encrypted = cipher.output;
 
-    const paymentInfo = {
-        paymentId: uuidv4(),
-        amount,
-        type: types[getRandom(types.length)],
-    }
-
-    return paymentInfo;
+    return forge.util.encode64(encrypted.getBytes());
 }
 
+//handle payment using paystack
+const handlePayment = async (amount, email) =>{
+    try {
+        //get the card / payment information
+        const paymentCardDetails = {
+            amount,
+            email,
+            bank: {
+                code: "057",
+                account_number: "0000000000"
+            },
+            birthday: "1995-12-23"
+        }
+
+        //define options
+        const options = {
+            hostname: 'api.paystack.co',
+            port: 443,
+            path: '/charge',
+            method: 'POST',
+            url: "https://api.paystack.co/charge",
+            headers: {
+              Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            data: JSON.stringify(paymentCardDetails)
+        }
+
+        //make payment request
+        const res = await axios(options);
+
+        return res; 
+
+    }catch(error){
+        console.log(error)
+    }
+}
+
+// //handle payment using flutterwave
+// const handlePayment = async (amount, email) =>{
+//     try {
+//         //get the card / payment information
+//         const paymentCardDetails = {
+//             amount,
+//             email,
+//             tx_ref: uuidv4(),
+//             currency: "NGN",
+//             card_number: 5399670123490229,
+//             cvv: 123,
+//             expiry_month: 11,
+//             expiry_year: 21
+//         }
+
+//         //encrypt the paymentCard details information
+//         let key = process.env.FLUTTERWAVE_ENCRYPT_KEY;
+
+//         //encrypted response
+//         const encryptedRes = encrypt(key, JSON.stringify(paymentCardDetails) );
+
+//         const res = await axios({
+//             method: 'POST',
+//             url: "https://api.flutterwave.com/v3/charges?type=card",
+//             headers: {
+//                 authorization:`Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`
+//             },
+//             data:{
+//                 client: encryptedRes
+//             }
+//         })
+
+//         console.log(res);
+
+//     }catch(error){
+//         console.log(error)
+//     }
+// }
+
 //just for testing
+
 exports.getOrders = async (req, res, next) => {
     try {
         
@@ -80,7 +159,7 @@ exports.createOrder = async (req, res, next) => {
         if(!req.body.amount) return next(new HandlerError("Amount is not specified", 404));
         
         //handle payment (paystack)
-        const paymentDetails = handlePayment(req.body.amount, user.email);
+        const paymentDetails = await handlePayment(req.body.amount, user.email);
 
         const paymentInfo = {
             user: user.id,
@@ -107,7 +186,7 @@ exports.createOrder = async (req, res, next) => {
         }
 
         //create the order
-        const order = await Order.create(userOrder);
+        const order = await Order.create({userOrder});
         if(!order) return next(new HandlerError("Order was not placed successfully.", 500));
             
         res.status(200).json({
